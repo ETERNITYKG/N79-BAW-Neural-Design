@@ -40,24 +40,24 @@ rcParams['axes.unicode_minus'] = False
 # 设置随机种子以确保结果可重复
 #np.random.seed(88)
 
-# === Define the custom weighted MSE loss ===
+# 定义自定义加权均方误差损失
 def make_weighted_mse(weight_ranges, weight_factor, group_size, n_groups=4):
-    # Create a weights array for 4*group_size outputs (4 groups of group_size=911)
+    # 为四组输出创建权重数组（每组包含 group_size=911 个点）
     weights = np.ones(group_size * n_groups, dtype=np.float32)
 
     for g in range(n_groups):
         for lo, hi in weight_ranges:
             start = g * group_size + lo
             end = g * group_size + hi
-            weights[start:end + 1] = weight_factor  # Inclusive range
+            weights[start:end + 1] = weight_factor  # 区间端点包含
 
     weights_tf = tf.constant(weights)
 
-    # Define the custom loss function
+    # 定义自定义损失函数
     def weighted_mse(y_true, y_pred):
         sq_error = tf.square(y_true - y_pred)
         weighted_sq_error = sq_error * weights_tf
-        return tf.reduce_mean(weighted_sq_error)  # scalar loss
+        return tf.reduce_mean(weighted_sq_error)  # 标量损失
 
     return weighted_mse
 
@@ -292,7 +292,7 @@ def main():
 
     # 归一化输入数据
     normalized_input_data = normalize_input_data(input_data, input_min_vals, input_max_vals)
-    # print("Normalized Input Data Sample:", normalized_input_data[:5])
+    # print("归一化输入数据示例:", normalized_input_data[:5])
     print("Normalized Input Data Shape:", normalized_input_data.shape)
 
     # 定义输出数据的组数和组大小
@@ -301,7 +301,7 @@ def main():
     # 归一化输出数据
     normalized_output_data = normalize_output_data(output_data, output_min_vals, output_max_vals, num_groups,
                                                    group_size)
-    # print("Normalized Output Data Sample:", normalized_output_data[:5])
+    # print("归一化输出数据示例:", normalized_output_data[:5])
     print("Normalized Output Data Shape:", normalized_output_data.shape)
 
     # 划分数据集
@@ -324,13 +324,13 @@ def main():
     # 构建模型
     model = create_model(input_dim=input_train.shape[1], output_dim=output_train.shape[1])
 
-    # Create the weighted loss function
+    # 创建加权损失函数
     loss_fn = make_weighted_mse(weight_ranges=[(200, 680)], weight_factor=3.0, group_size=group_size, n_groups=4)
 
-    # Compile the model with the custom loss
+    # 使用自定义损失函数编译模型
     model.compile(optimizer=Adam(), loss=loss_fn, metrics=['mae'])
 
-    # # 编译模型
+    # 备选编译方式
     # model.compile(loss='mean_squared_error', optimizer=Adam())
 
     # 创建检查点回调
@@ -401,10 +401,11 @@ def main():
     final_model_path = os.path.join(output_model_dir, 'final_model.h5')
     try:
         loaded_model = load_model(final_model_path, compile = False)
+        # 备用编译方式
         # model.compile(loss='binary_crossentropy',
         #               optimizer=Ada,
-        #               metrics=[HammingScore])  #HammingScore是自定义的metric,调用自编写loss方法
-        # model = keras.models.load_model('model.h5', custom_objects={'HammingScore': HammingScore} )
+        #               metrics=[HammingScore])  # HammingScore 为自定义评估指标，调用自定义损失函数
+        # model = keras.models.load_model('model.h5', custom_objects={'HammingScore': HammingScore})
         print(f"模型已从 {final_model_path} 成功加载。")
     except Exception as e:
         print(f"加载模型时发生错误: {e}")
